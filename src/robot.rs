@@ -27,15 +27,17 @@ pub struct Robot {
     linear_velocity: Point2,
     angular_velocity: f32,
     sensors: Sensors,
+    speed: f32,
 }
 impl Robot {
-    pub fn new(linear_velocity: Point2, angular_velocity: f32) -> Self {
+    pub fn new() -> Self {
         let mut robot = Self {
             position: pt2(0.0, 0.0),
             rotation: 0.0,
-            linear_velocity,
-            angular_velocity,
+            linear_velocity: vec2(0.0, 0.0),
+            angular_velocity: 0.0,
             sensors: Sensors::new(),
+            speed: 50.0,
         };
         robot.sensors.length = 200.0;
 
@@ -79,6 +81,12 @@ impl Robot {
         }
         collision_points
     }
+    pub fn set_linear_velocity(&mut self, x: f32, y: f32) {
+        self.linear_velocity = pt2(x, y);
+    }
+    pub fn set_angular_velocity(&mut self, value: f32) {
+        self.angular_velocity = value;
+    }
 }
 impl Nannou for Robot {
     fn draw(&self, draw: &Draw) {
@@ -97,9 +105,8 @@ impl Nannou for Robot {
 
         self.draw_sensors(draw);
     }
-
     fn update(&mut self) {
-        self.position += self.linear_velocity * (1.0 / 60.0);
+        self.position += self.speed * self.linear_velocity * (1.0 / 60.0);
         self.rotation += self.angular_velocity * (1.0 / 60.0);
 
         self.update_sensors();
@@ -133,8 +140,8 @@ pub fn collision_line_line(line_a: &(Point2, Point2), line_b: &(Point2, Point2))
     if denominator == 0.0 {
         return None;
     }
-    let u_a = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
-    let u_b = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+    let u_a = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+    let u_b = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
 
     if u_b >= 0.0 && u_b <= 1.0 && u_a >= 0.0 && u_a <= 1.0 {
         let intersection_x = x1 + (u_a * (x2 - x1));
