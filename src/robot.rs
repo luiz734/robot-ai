@@ -1,3 +1,5 @@
+use std::f32::INFINITY;
+
 use nannou::prelude::*;
 
 pub trait Nannou {
@@ -16,7 +18,7 @@ impl Sensors {
     pub fn new() -> Self {
         Self {
             length: 0.0,
-            angles: vec![-PI / 4.0, -PI / 6.0, 0.0, PI / 4.0, PI / 6.0],
+            angles: vec![-PI / 4.0, -PI / 6.0, 0.0, PI / 6.0, PI / 4.0],
             lines: Vec::new(),
         }
     }
@@ -28,6 +30,7 @@ pub struct Robot {
     angular_velocity: f32,
     sensors: Sensors,
     speed: f32,
+    radius: f32,
 }
 impl Robot {
     pub fn new() -> Self {
@@ -38,6 +41,7 @@ impl Robot {
             angular_velocity: 0.0,
             sensors: Sensors::new(),
             speed: 50.0,
+            radius: 40.0,
         };
         robot.sensors.length = 200.0;
 
@@ -65,21 +69,34 @@ impl Robot {
             self.sensors.lines.push((self.position, end_pos));
         }
     }
-    pub fn check_collision(&self, obstacles: &Vec<Rect>) -> Vec<Point2> {
+    pub fn get_closest_collisions(&self, obstacles: &Vec<Rect>) -> (Vec<Point2>, Vec<f32>) {
         let mut collision_points: Vec<Point2> = Vec::new();
+        let mut distances: Vec<f32> = Vec::new();
 
         for sensor in self.sensors.lines.iter() {
             for obstacle in obstacles.iter() {
                 let points = collision_line_rect(sensor, obstacle);
-                // if there is a point, extracts it
+                // gets the closest colliding point
+                let mut min_distance = self.sensors.length;
+                let mut min_point = pt2(INFINITY, INFINITY);
                 for p in points {
                     if let Some(p) = p {
-                        collision_points.push(p.clone());
+                        let distance = self.distance_to(p);
+                        if distance < min_distance {
+                            min_distance = distance;
+                            min_point = p.clone();
+                        }
                     }
                 }
+                let mapped_distance = map_range(min_distance, 0.0, 200.0, 1.0, 0.0);
+                collision_points.push(min_point);
+                distances.push(mapped_distance);
             }
         }
-        collision_points
+        (collision_points, distances)
+    }
+    pub fn distance_to(&self, point: Point2) -> f32 {
+        return self.position.distance(point);
     }
     pub fn set_linear_velocity(&mut self, x: f32, y: f32) {
         self.linear_velocity = pt2(x, y);
@@ -87,16 +104,19 @@ impl Robot {
     pub fn set_angular_velocity(&mut self, value: f32) {
         self.angular_velocity = value;
     }
+    pub fn get_rotation(&self) -> f32 {
+        self.rotation
+    }
 }
 impl Nannou for Robot {
     fn draw(&self, draw: &Draw) {
-        let rect = Rect::from_xy_wh(self.position, vec2(-100.0, 100.0));
+        let rect = Rect::from_xy_wh(self.position, vec2(self.radius, self.radius));
         draw.ellipse().xy(rect.xy()).wh(rect.wh()).color(STEELBLUE);
 
         // front indicator
-        let front_x = self.rotation.sin() * (rect.w() / 2.0);
-        let front_y = self.rotation.cos() * (rect.w() / 2.0);
-        let front_indicator: Rect<f32> = Rect::from_xy_wh(rect.xy(), pt2(20.0, 20.0));
+        let front_x = self.rotation.sin() * (self.radius / 2.0);
+        let front_y = self.rotation.cos() * (self.radius / 2.0);
+        let front_indicator: Rect<f32> = Rect::from_xy_wh(rect.xy(), pt2(8.0, 8.0));
         // let front_indicator = front_indicator.align_top_of(robot);
         draw.ellipse()
             .xy(front_indicator.xy() + pt2(front_x, front_y))
@@ -112,7 +132,6 @@ impl Nannou for Robot {
         self.update_sensors();
     }
 }
-
 pub fn collision_line_rect(line: &(Point2, Point2), rect: &Rect) -> Vec<Option<Point2>> {
     let rect_sides = vec![
         (rect.top_left(), rect.top_right()),
