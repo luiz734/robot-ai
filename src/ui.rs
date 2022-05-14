@@ -1,5 +1,8 @@
 use crate::robot::Nannou;
-use nannou::{color::BLACK, prelude::Rect};
+use nannou::{
+    color::BLACK,
+    prelude::{Rect, Vec2},
+};
 
 pub struct UI {
     background: Rect,
@@ -10,14 +13,14 @@ pub struct UI {
 impl UI {
     pub fn new(window_rect: &Rect) -> UI {
         UI {
-            background: Rect::from_w_h(200.0, window_rect.h()).top_left_of(window_rect.to_owned()),
+            background: Rect::from_w_h(250.0, window_rect.h()).top_left_of(window_rect.to_owned()),
             display_blueprint: r#"
     sensor -45º   {}
     sensor -35º   {}
     sensor - 0º   {}
     sensor +35º   {}
     sensor +45º   {}
-    rotation      {}"#
+    mode          {}"#
                 .to_owned(),
             display_text: "PLACEHOLDER".to_owned(),
         }
@@ -27,6 +30,9 @@ impl UI {
         for v in values {
             self.display_text = self.display_text.replacen("{}", v.to_string().as_str(), 1);
         }
+    }
+    pub fn get_rect(&self) -> Rect {
+        return self.background.to_owned();
     }
 }
 impl Nannou for UI {

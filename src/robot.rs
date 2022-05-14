@@ -2,6 +2,33 @@ use std::f32::INFINITY;
 
 use nannou::prelude::*;
 
+enum Mode {
+    FOLLOW,
+    DIVERT,
+}
+impl Mode {
+    pub fn get_mode(&self) -> f32 {
+        match self {
+            Mode::FOLLOW => -1.0,
+            Mode::DIVERT => 1.0,
+        }
+    }
+    pub fn next(&self) -> Self {
+        match self {
+            Mode::FOLLOW => Mode::DIVERT,
+            Mode::DIVERT => Mode::FOLLOW,
+        }
+    }
+}
+impl ToString for Mode {
+    fn to_string(&self) -> String {
+        match self {
+            Mode::FOLLOW => format!("follow ({:2})", self.get_mode()),
+            Mode::DIVERT => format!("divert ({:2})", self.get_mode()),
+        }
+    }
+}
+
 pub trait Nannou {
     fn draw(&self, draw: &Draw);
     fn update(&mut self);
@@ -23,11 +50,13 @@ impl Sensors {
         }
     }
 }
+// TODO: maybe constrain robot movement
 pub struct Robot {
     position: Point2,
     rotation: f32,
     linear_velocity: Point2,
     angular_velocity: f32,
+    mode: Mode,
     sensors: Sensors,
     speed: f32,
     radius: f32,
@@ -39,8 +68,9 @@ impl Robot {
             rotation: 0.0,
             linear_velocity: vec2(0.0, 0.0),
             angular_velocity: 0.0,
+            mode: Mode::FOLLOW,
             sensors: Sensors::new(),
-            speed: 50.0,
+            speed: 100.0,
             radius: 40.0,
         };
         robot.sensors.length = 200.0;
@@ -74,23 +104,36 @@ impl Robot {
         let mut distances: Vec<f32> = Vec::new();
 
         for sensor in self.sensors.lines.iter() {
+            // adds "0.0" when there is no colision for the sensor, so it not gets empty
+            let mut empty_sensors = true;
             for obstacle in obstacles.iter() {
                 let points = collision_line_rect(sensor, obstacle);
+                if points.is_empty() {
+                    continue;
+                }
+                empty_sensors = false;
                 // gets the closest colliding point
+                // here for sure there is at leat 1 collision because "points" is not empty
                 let mut min_distance = self.sensors.length;
                 let mut min_point = pt2(INFINITY, INFINITY);
                 for p in points {
-                    if let Some(p) = p {
-                        let distance = self.distance_to(p);
-                        if distance < min_distance {
-                            min_distance = distance;
-                            min_point = p.clone();
-                        }
+                    let distance = self.distance_to(p);
+                    if distance < min_distance {
+                        min_distance = distance;
+                        min_point = p.clone();
                     }
                 }
+                /*
+                    if we allow the above code get executed  when the "points" vector is empty,
+                    every sensor would have 1 inexistent collision for each obstacle, returnin
+                    n_sensors * n_obstacle extras "0.0"s and (INFINITY, INFINITY)
+                */
                 let mapped_distance = map_range(min_distance, 0.0, 200.0, 1.0, 0.0);
                 collision_points.push(min_point);
                 distances.push(mapped_distance);
+            }
+            if empty_sensors {
+                distances.push(0.0);
             }
         }
         (collision_points, distances)
@@ -106,6 +149,13 @@ impl Robot {
     }
     pub fn get_rotation(&self) -> f32 {
         self.rotation
+    }
+    pub fn toggle_mode(&mut self) {
+        let a = Mode::next(&self.mode);
+        self.mode = a;
+    }
+    pub fn get_mode_numeric(&self) -> f32 {
+        return self.mode.get_mode();
     }
 }
 impl Nannou for Robot {
@@ -132,7 +182,7 @@ impl Nannou for Robot {
         self.update_sensors();
     }
 }
-pub fn collision_line_rect(line: &(Point2, Point2), rect: &Rect) -> Vec<Option<Point2>> {
+pub fn collision_line_rect(line: &(Point2, Point2), rect: &Rect) -> Vec<Point2> {
     let rect_sides = vec![
         (rect.top_left(), rect.top_right()),
         (rect.top_right(), rect.bottom_right()),
@@ -142,8 +192,13 @@ pub fn collision_line_rect(line: &(Point2, Point2), rect: &Rect) -> Vec<Option<P
     // check collision for all rect sides
     let mut sensor_input = Vec::new();
     for side in rect_sides {
-        let current = collision_line_line(line, &side);
-        sensor_input.push(current);
+        // if there is a collision, adds the collision point
+        match collision_line_line(line, &side) {
+            Some(p) => {
+                sensor_input.push(p);
+            }
+            None => {}
+        }
     }
     sensor_input
 }
