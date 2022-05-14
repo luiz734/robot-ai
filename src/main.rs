@@ -44,22 +44,27 @@ fn model(app: &App) -> Model {
     let thickness: f32 = 40.0;
     let win_rect = app.window_rect();
     let ui_rect = model.ui.get_rect();
-    let top_wall = Rect::from_w_h(win_rect.w() - ui_rect.w() - 2.0 * thickness, thickness)
-        .top_left_of(win_rect)
-        .shift_x(ui_rect.w() + thickness);
-    let right_wall = Rect::from_w_h(thickness, win_rect.h() - 2.0 * thickness)
-        .top_right_of(win_rect)
-        .shift_y(-thickness);
-    let bottom_wall = Rect::from_w_h(win_rect.w() - ui_rect.w() - 2.0 * thickness, thickness)
-        .bottom_left_of(win_rect)
-        .shift_x(ui_rect.w() + thickness);
-    let left_wall = Rect::from_w_h(thickness, win_rect.h() - 2.0 * thickness)
-        .top_left_of(win_rect)
-        .shift_x(ui_rect.w())
-        .shift_y(-thickness);
-    model
-        .obstacles
-        .append(&mut vec![top_wall, right_wall, bottom_wall, left_wall]);
+    let valid_area = Rect::from_w_h(
+        win_rect.w() - ui_rect.w() - 2.0 * thickness,
+        win_rect.h() - 2.0 * thickness,
+    )
+    .top_right_of(win_rect)
+    .shift_x(-thickness)
+    .shift_y(-thickness);
+    // let top_wall = Rect::from_w_h(win_rect.w() - ui_rect.w() - 2.0 * thickness, thickness)
+    //     .top_left_of(win_rect)
+    //     .shift_x(ui_rect.w() + thickness);
+    // let right_wall = Rect::from_w_h(thickness, win_rect.h() - 2.0 * thickness)
+    //     .top_right_of(win_rect)
+    //     .shift_y(-thickness);
+    // let bottom_wall = Rect::from_w_h(win_rect.w() - ui_rect.w() - 2.0 * thickness, thickness)
+    //     .bottom_left_of(win_rect)
+    //     .shift_x(ui_rect.w() + thickness);
+    // let left_wall = Rect::from_w_h(thickness, win_rect.h() - 2.0 * thickness)
+    //     .top_left_of(win_rect)
+    //     .shift_x(ui_rect.w())
+    //     .shift_y(-thickness);
+    model.obstacles.append(&mut vec![valid_area]); //top_wall, right_wall, bottom_wall, left_wall]);
 
     model
 }
@@ -119,14 +124,11 @@ fn event(_app: &App, model: &mut Model, event: Event) {
 
 fn view(app: &App, model: &Model, frame: Frame) {
     let draw = app.draw();
-    draw.background().color(PLUM);
+    draw.background().color(INDIANRED);
 
     // draw obstacles
     for obstacle in model.obstacles.iter() {
-        draw.rect()
-            .xy(obstacle.xy())
-            .wh(obstacle.wh())
-            .color(INDIANRED);
+        draw.rect().xy(obstacle.xy()).wh(obstacle.wh()).color(PLUM);
     }
     // draw points
     for point in model.colliding_points.0.iter() {
