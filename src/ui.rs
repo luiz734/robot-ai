@@ -1,8 +1,5 @@
 use crate::robot::Nannou;
-use nannou::{
-    color::BLACK,
-    prelude::{Rect, Vec2},
-};
+use nannou::{color::BLACK, prelude::Rect};
 
 pub struct UI {
     background: Rect,

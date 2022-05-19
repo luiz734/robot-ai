@@ -54,7 +54,7 @@ impl Sensors {
 pub struct Robot {
     position: Point2,
     rotation: f32,
-    linear_velocity: Point2,
+    linear_velocity: f32,
     angular_velocity: f32,
     mode: Mode,
     sensors: Sensors,
@@ -66,7 +66,7 @@ impl Robot {
         let mut robot = Self {
             position: pt2(0.0, 0.0),
             rotation: 0.0,
-            linear_velocity: vec2(0.0, 0.0),
+            linear_velocity: 0.0,
             angular_velocity: 0.0,
             mode: Mode::FOLLOW,
             sensors: Sensors::new(),
@@ -141,14 +141,11 @@ impl Robot {
     pub fn distance_to(&self, point: Point2) -> f32 {
         return self.position.distance(point);
     }
-    pub fn set_linear_velocity(&mut self, x: f32, y: f32) {
-        self.linear_velocity = pt2(x, y);
+    pub fn set_linear_velocity(&mut self, value: f32) {
+        self.linear_velocity = value;
     }
     pub fn set_angular_velocity(&mut self, value: f32) {
         self.angular_velocity = value;
-    }
-    pub fn get_rotation(&self) -> f32 {
-        self.rotation
     }
     pub fn toggle_mode(&mut self) {
         let a = Mode::next(&self.mode);
@@ -176,7 +173,8 @@ impl Nannou for Robot {
         self.draw_sensors(draw);
     }
     fn update(&mut self) {
-        self.position += self.speed * self.linear_velocity * (1.0 / 60.0);
+        let direction = vec2(self.rotation.sin(), self.rotation.cos());
+        self.position += self.linear_velocity * direction * self.speed * (1.0 / 60.0);
         self.rotation += self.angular_velocity * (1.0 / 60.0);
 
         self.update_sensors();
